@@ -87,6 +87,7 @@
                         <div class="teacher-tabs">
                             <button class="tab-btn active" onclick="switchTeacherTab('individual')">Laporan Per Guru</button>
                             <button class="tab-btn" onclick="switchTeacherTab('master')">Rekap Master (Semua)</button>
+                            <button class="tab-btn" onclick="switchTeacherTab('edit')">Edit Data Mentah</button>
                         </div>
 
                         <div class="control-panel">
@@ -174,6 +175,32 @@
                             <div class="control-panel" style="margin-top:10px; border-top:1px dashed #ccc; display:flex; gap:5px; justify-content:center;">
                                 <button class="btn btn-primary" onclick="generateAnnualMasterPDF('preview')"><i class="fas fa-eye"></i> Preview Tahunan</button>
                                 <button class="btn btn-success" onclick="generateAnnualMasterPDF('download')" style="background-color: #6f42c1;"><i class="fas fa-book"></i> Download Tahunan (Jan-Des)</button>
+                            </div>
+                        </div>
+
+                        <div class="teacher-tab-content" id="tab-teacher-edit">
+                            <div class="control-panel" style="background: #e2e8f0; border-color: #cbd5e1;">
+                                <p style="margin:0 0 10px 0; width:100%; font-size:0.9em;"><strong>Edit Data:</strong> Anda dapat mengubah data mentah (Tanggal, Jam, Nama, Keterangan) di sini. Keterangan seperti "Sakit", "Izin", "Alpa", "Cuti", "Dinas" akan otomatis terbaca saat dicetak.</p>
+                                <div style="display:flex; gap:5px; margin-bottom: 10px; width:100%;">
+                                    <button class="btn btn-primary" onclick="addEditRow()"><i class="fas fa-plus"></i> Tambah Baris Manual</button>
+                                    <button class="btn btn-success" onclick="saveEditData()"><i class="fas fa-save"></i> Simpan ke Memori</button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 400px; overflow-y: auto; width:100%;">
+                                    <table id="tbl-edit-raw">
+                                        <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
+                                            <tr>
+                                                <th>Tanggal (DD/MM/YYYY)</th>
+                                                <th>Jam (HH:MM)</th>
+                                                <th>Nama Guru</th>
+                                                <th>Keterangan</th>
+                                                <th>Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-edit-raw">
+                                            <tr><td colspan="5" align="center">Belum ada data. Silakan ambil data server terlebih dahulu.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
