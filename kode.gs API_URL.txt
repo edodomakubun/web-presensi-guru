@@ -1,0 +1,342 @@
+/* ----------------------------------------------------------------
+   BACKEND SYSTEM - ABSENSI & ADMIN (FULL CONTROL)
+   ---------------------------------------------------------------- */
+
+// --- 1. SETUP DATABASE ---
+function setupDatabase() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // A. Sheet USERS (Guru)
+  createSheet(ss, "USERS", 
+    ["ID_Guru", "Nama_Lengkap", "Username", "Password", "Kelas_Ampuan", "Status"], 
+    ["GR01", "Budi Santoso, S.Pd", "guru", "123", "Kelas 1,Kelas 2", "Aktif"]
+  );
+
+  // B. Sheet ADMIN (Khusus Admin)
+  createSheet(ss, "ADMIN", 
+    ["Username", "Password", "Nama"], 
+    ["admin", "admin123", "Administrator"] // Default Admin
+  );
+
+  // C. Sheet DATA_SISWA
+  createSheet(ss, "DATA_SISWA", 
+    ["NIS", "Nama_Siswa", "Jenis_Kelamin", "Kelas", "Status_Siswa"], 
+    ["1001", "Ahmad Dahlan", "L", "Kelas 1", "Aktif"]
+  );
+
+  // D. Sheet CONFIG
+  createSheet(ss, "CONFIG", 
+    ["Kategori", "Nilai", "Status"], 
+    [
+      ["Tahun_Pelajaran", "2025/2026", "Aktif"],
+      ["Semester", "Ganjil", "Aktif"]
+    ]
+  );
+
+  // E. Sheet Absensi
+  var kelasList = ["Kelas 1", "Kelas 2", "Kelas 3", "Kelas 4", "Kelas 5", "Kelas 6"];
+  var headerAbsen = ["ID_Log", "Timestamp", "Tanggal_Absen", "Tahun_Ajar", "Semester", "ID_Guru", "NIS", "Nama_Siswa", "Status", "Keterangan"];
+  
+  kelasList.forEach(function(k) {
+    var sheetName = "ABSEN_" + k.replace(" ", "_").toUpperCase();
+    var sheet = createSheet(ss, sheetName, headerAbsen, null);
+    if(sheet) sheet.getRange("C2:C").setNumberFormat("dd mmmm yyyy");
+  });
+}
+
+function createSheet(ss, name, headers, dummy) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#e0e0e0");
+    if (dummy) {
+      if (dummy[0] instanceof Array) dummy.forEach(r => sheet.appendRow(r));
+      else sheet.appendRow(dummy);
+    }
+  }
+  return sheet;
+}
+
+// --- 2. API CONTROLLER ---
+function doGet(e) {
+  var action = e.parameter.action;
+  
+  if (action == 'get_absensi') return getAbsensi(e.parameter.kelas, e.parameter.tanggal);
+  if (action == 'get_rekap_bulanan') return getRekapBulanan(e.parameter.kelas, e.parameter.bulan);
+  
+  // ADMIN ROUTES
+  if (action == 'get_all_users') return getAllUsers();
+  
+  return responseMsg('error', 'Action not found');
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var action = data.action;
+
+    if (action == 'login') return handleLogin(data); // Modified to handle role
+    if (action == 'simpan_absensi') return simpanAbsensi(data);
+    
+    // ADMIN ACTIONS
+    if (action == 'update_config') return updateConfig(data);
+    if (action == 'save_user') return saveUser(data);
+    if (action == 'delete_user') return deleteUser(data.id_guru);
+
+    return responseMsg('error', 'Action invalid');
+  } catch (err) {
+    return responseMsg('error', err.toString());
+  }
+}
+
+// --- 3. LOGIKA BISNIS ---
+
+function handleLogin(payload) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var role = payload.role; // 'guru' atau 'admin'
+  var u = payload.username.trim();
+  var p = payload.password.trim();
+
+  // A. LOGIN ADMIN
+  if (role === 'admin') {
+    var sheet = ss.getSheetByName("ADMIN");
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === u && String(data[i][1]) === p) {
+        return responseJSON({
+          status: 'success',
+          role: 'admin',
+          user: { nama: data[i][2], username: u },
+          config: getConfig(ss)
+        });
+      }
+    }
+    return responseMsg('error', 'Username/Password Admin Salah');
+  }
+
+  // B. LOGIN GURU
+  var sheet = ss.getSheetByName("USERS");
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][2]).trim() === u && String(data[i][3]).trim() === p) {
+      if (data[i][5] !== 'Aktif') return responseMsg('error', 'Akun Non-Aktif');
+      return responseJSON({
+        status: 'success',
+        role: 'guru',
+        user: { id: data[i][0], nama: data[i][1], kelas: String(data[i][4]).split(",") },
+        config: getConfig(ss)
+      });
+    }
+  }
+  return responseMsg('error', 'Username/Password Guru Salah');
+}
+
+// Helper Get Config
+function getConfig(ss) {
+  var configSheet = ss.getSheetByName("CONFIG");
+  var configData = configSheet.getDataRange().getValues();
+  var ta = configData.find(r => r[0] == 'Tahun_Pelajaran' && r[2] == 'Aktif');
+  var sem = configData.find(r => r[0] == 'Semester' && r[2] == 'Aktif');
+  return { tahun_ajar: ta ? ta[1] : '-', semester: sem ? sem[1] : '-' };
+}
+
+// --- ADMIN FEATURES ---
+
+function updateConfig(data) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("CONFIG");
+  // Update Tapel (Row 2) & Semester (Row 6) - Hardcoded index for simplicity based on setup
+  // Lebih aman kita cari indexnya
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  
+  for(var i=0; i<values.length; i++) {
+    if(values[i][0] == 'Tahun_Pelajaran' && values[i][2] == 'Aktif') {
+       sheet.getRange(i+1, 2).setValue(data.tahun_ajar);
+    }
+    if(values[i][0] == 'Semester' && values[i][2] == 'Aktif') {
+       sheet.getRange(i+1, 2).setValue(data.semester);
+    }
+  }
+  return responseMsg('success', 'Konfigurasi berhasil diperbarui');
+}
+
+function getAllUsers() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("USERS");
+  var data = sheet.getDataRange().getValues();
+  var users = [];
+  // Skip header
+  for(var i=1; i<data.length; i++) {
+    users.push({
+      id: data[i][0],
+      nama: data[i][1],
+      username: data[i][2],
+      password: data[i][3], // Di real app jangan kirim password, tapi ini sederhana
+      kelas: data[i][4],
+      status: data[i][5]
+    });
+  }
+  return responseJSON({ status: 'success', data: users });
+}
+
+function saveUser(data) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("USERS");
+  var users = sheet.getDataRange().getValues();
+  var isEdit = false;
+  var rowIdx = -1;
+
+  // Cek jika edit (cari ID)
+  if(data.id) {
+    for(var i=1; i<users.length; i++) {
+      if(String(users[i][0]) == data.id) {
+        isEdit = true;
+        rowIdx = i + 1;
+        break;
+      }
+    }
+  }
+
+  if(isEdit) {
+    // Update
+    sheet.getRange(rowIdx, 2, 1, 5).setValues([[
+      data.nama, data.username, data.password, data.kelas, data.status
+    ]]);
+  } else {
+    // Create New
+    var newId = "GR" + ("000" + (users.length)).slice(-3); // Auto ID Simple
+    sheet.appendRow([newId, data.nama, data.username, data.password, data.kelas, data.status]);
+  }
+  return responseMsg('success', 'Data Guru Berhasil Disimpan');
+}
+
+function deleteUser(id) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("USERS");
+  var users = sheet.getDataRange().getValues();
+  for(var i=1; i<users.length; i++) {
+    if(String(users[i][0]) == id) {
+      sheet.deleteRow(i+1);
+      return responseMsg('success', 'Guru berhasil dihapus');
+    }
+  }
+  return responseMsg('error', 'Guru tidak ditemukan');
+}
+
+// --- EXISTING FEATURES (ABSENSI) ---
+function getAbsensi(kelas, tanggalInput) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = "ABSEN_" + kelas.trim().toUpperCase().replace(/ /g, "_");
+  var sheet = ss.getSheetByName(sheetName);
+  // Fallback regex
+  if(!sheet) {
+     sheetName = "ABSEN_" + kelas.trim().toUpperCase().replace(/\s/g, "_");
+     sheet = ss.getSheetByName(sheetName);
+  }
+  
+  if (!sheet) return responseMsg('error', 'Database kelas belum dibuat');
+
+  var dataAbsen = sheet.getDataRange().getValues();
+  var savedData = [];
+  
+  for (var i = 1; i < dataAbsen.length; i++) {
+    var rowDate = new Date(dataAbsen[i][2]); 
+    var dateStr = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    
+    if (dateStr === tanggalInput) {
+      savedData.push({
+        nis: dataAbsen[i][6], nama: dataAbsen[i][7], status: dataAbsen[i][8], ket: dataAbsen[i][9], source: 'db'
+      });
+    }
+  }
+
+  if (savedData.length > 0) return responseJSON({ status: 'success', data: savedData, type: 'edit' });
+
+  // Get Master
+  var sheetSiswa = ss.getSheetByName("DATA_SISWA");
+  var allSiswa = sheetSiswa.getDataRange().getValues();
+  var newData = [];
+  for (var j = 1; j < allSiswa.length; j++) {
+    if (String(allSiswa[j][3]).trim() == kelas.trim() && allSiswa[j][4] == 'Aktif') {
+      newData.push({ nis: allSiswa[j][0], nama: allSiswa[j][1], status: 'H', ket: '', source: 'master' });
+    }
+  }
+  return responseJSON({ status: 'success', data: newData, type: 'new' });
+}
+
+function simpanAbsensi(payload) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = "ABSEN_" + payload.kelas.trim().toUpperCase().replace(/ /g, "_");
+  var sheet = ss.getSheetByName(sheetName);
+  if(!sheet) {
+      sheetName = "ABSEN_" + payload.kelas.trim().toUpperCase().replace(/\s/g, "_");
+      sheet = ss.getSheetByName(sheetName);
+  }
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = rows.length - 1; i >= 1; i--) {
+    var rowDate = new Date(rows[i][2]);
+    var dateStr = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    if (dateStr === payload.tanggal) sheet.deleteRow(i + 1);
+  }
+
+  var ts = new Date();
+  var dataToInsert = payload.data_siswa.map(s => [
+    Utilities.getUuid().slice(0,8), ts, payload.tanggal, payload.ta, payload.smt, payload.id_guru, s.nis, s.nama, s.status, s.ket
+  ]);
+
+  if (dataToInsert.length > 0) sheet.getRange(sheet.getLastRow() + 1, 1, dataToInsert.length, dataToInsert[0].length).setValues(dataToInsert);
+  return responseMsg('success', 'Data Absensi Berhasil Disimpan');
+}
+
+function getRekapBulanan(kelas, bulanInput) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = "ABSEN_" + kelas.trim().toUpperCase().replace(/ /g, "_");
+  var sheet = ss.getSheetByName(sheetName);
+  if(!sheet) {
+     sheetName = "ABSEN_" + kelas.trim().toUpperCase().replace(/\s/g, "_");
+     sheet = ss.getSheetByName(sheetName);
+  }
+  if (!sheet) return responseMsg('error', 'Sheet tidak ditemukan');
+
+  var data = sheet.getDataRange().getValues();
+  var result = {}; 
+  var targetYear = parseInt(bulanInput.split('-')[0]);
+  var targetMonth = parseInt(bulanInput.split('-')[1]) - 1; 
+
+  for (var i = 1; i < data.length; i++) {
+    var rawDate = data[i][2];
+    if(!rawDate) continue;
+    var rowDate = new Date(rawDate);
+    var nis = data[i][6];
+    var status = String(data[i][8]).toUpperCase().trim();
+    
+    if (rowDate.getFullYear() == targetYear && rowDate.getMonth() == targetMonth) {
+      var tgl = rowDate.getDate(); 
+      if (!result[nis]) result[nis] = { dates: {}, summary: {H:0, S:0, I:0, A:0} };
+      result[nis].dates[tgl] = status;
+    }
+  }
+
+  for (var key in result) {
+    var dates = result[key].dates;
+    for (var d in dates) {
+      var s = dates[d];
+      if (['H','S','I','A'].includes(s)) result[key].summary[s]++;
+    }
+  }
+
+  var sheetSiswa = ss.getSheetByName("DATA_SISWA");
+  var dataSiswa = sheetSiswa.getDataRange().getValues();
+  var listSiswa = [];
+  for (var j = 1; j < dataSiswa.length; j++) {
+    if (String(dataSiswa[j][3]).trim() == kelas.trim() && dataSiswa[j][4] == 'Aktif') {
+      var nisSiswa = dataSiswa[j][0];
+      listSiswa.push({ nis: nisSiswa, nama: dataSiswa[j][1], rekap: result[nisSiswa] || { dates: {}, summary: {H:0, S:0, I:0, A:0} } });
+    }
+  }
+  return responseJSON({ status: 'success', data: listSiswa });
+}
+
+function responseJSON(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+function responseMsg(status, msg) { return responseJSON({ status: status, message: msg }); }

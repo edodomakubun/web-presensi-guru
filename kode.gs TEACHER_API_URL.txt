@@ -1,0 +1,65 @@
+function doGet(e) {
+  var sheetId = '16H2sTQFVhbNQwjEf2GU41-zZL-crm5Ulq_ahXbrGLgo'; 
+  var sheetName = 'Log_Absen';
+  
+  var ss = SpreadsheetApp.openById(sheetId);
+  var sheet = ss.getSheetByName(sheetName);
+  
+  // Ambil Teks Mentah
+  var range = sheet.getDataRange();
+  var values = range.getDisplayValues(); 
+  
+  var result = [];
+  
+  // Loop dari baris ke-2
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    
+    var rawString = row[1]; // "16/12/2025 09:05:33"
+    var nama = row[2];
+    var ket = row[3];
+    
+    if (!nama || !rawString) continue;
+    
+    // 1. Pisahkan Tanggal dan Waktu (Split Spasi)
+    var splitSpace = rawString.trim().split(/\s+/);
+    
+    if (splitSpace.length >= 2) {
+      var datePart = splitSpace[0]; // "16/12/2025"
+      var timePart = splitSpace[1]; // "09:05:33"
+      
+      // 2. FORMAT TANGGAL (Wajib DD/MM/YYYY - Awalan Nol)
+      var splitDate = datePart.split(/[\/\-]/);
+      if (splitDate.length === 3) {
+        var dd = ('0' + splitDate[0]).slice(-2); // Paksa 2 digit (01)
+        var mm = ('0' + splitDate[1]).slice(-2); // Paksa 2 digit (12)
+        var yyyy = splitDate[2];
+        var cleanDate = dd + '/' + mm + '/' + yyyy;
+        
+        // 3. FORMAT WAKTU (Jam tanpa nol, Menit dengan nol)
+        // Kita pecah jam:menit:detik
+        var splitTime = timePart.split(':');
+        if (splitTime.length >= 2) {
+          
+          // JAM: Gunakan parseInt untuk membuang nol di depan (misal "09" jadi 9)
+          var jam = parseInt(splitTime[0], 10); 
+          
+          // MENIT: Gunakan slice(-2) untuk memaksa nol di depan (misal "5" jadi "05")
+          var menit = ('0' + splitTime[1]).slice(-2);
+          
+          var cleanTime = jam + ':' + menit; // Hasil: "9:05" atau "12:30"
+          
+          result.push({
+            tgl: cleanDate,
+            jam: cleanTime,
+            nama: nama,
+            keterangan: ket
+          });
+        }
+      }
+    }
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
