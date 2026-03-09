@@ -141,7 +141,9 @@ function switchTeacherTab(tabName) {
     document.getElementById('tab-teacher-' + tabName).classList.add('active');
 
     const btns = document.querySelectorAll('.teacher-tabs .tab-btn');
-    if (tabName === 'individual') btns[0].classList.add('active'); else btns[1].classList.add('active');
+    if (tabName === 'individual') btns[0].classList.add('active'); 
+    else if (tabName === 'master') btns[1].classList.add('active');
+    else if (tabName === 'edit') btns[2].classList.add('active');
 }
 
 async function fetchTeacherData() {
@@ -155,8 +157,13 @@ async function fetchTeacherData() {
         teacherGlobalData = data;
         loading.style.display = 'none'; btn.disabled = false;
 
-        if (data.length > 0) showAlert(`Berhasil! ${data.length} data guru diambil.`, "Sukses");
-        else showAlert('Data 0. Cek Spreadsheet Guru.', "Info");
+        if (data.length > 0) {
+            showAlert(`Berhasil! ${data.length} data guru diambil.`, "Sukses");
+            renderEditTable(); // Merender data HTML setelah fetch berhasil
+        } else {
+            showAlert('Data 0. Cek Spreadsheet Guru.', "Info");
+            renderEditTable();
+        }
 
     } catch (error) {
         console.error(error);
@@ -173,8 +180,9 @@ function dateToTextID(dateObj) {
 }
 
 function timeToMinutes(timeStr) {
-    if (!timeStr) return 0;
+    if (!timeStr || timeStr === "-") return NaN;
     let parts = timeStr.split(':');
+    if(parts.length < 2) return NaN;
     return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
 }
 
@@ -190,17 +198,99 @@ function processSmartMatrix(rawData, targetDatesObj) {
             if (!matrix[item.nama][dateKey]) matrix[item.nama][dateKey] = { fixedMasuk: null, fixedPulang: null };
             let entry = matrix[item.nama][dateKey];
             let ket = (item.keterangan || "").toLowerCase().trim();
-            let timeStr = item.jam;
-            if (ket.includes("masuk") || ket.includes("terlambat") || ket.includes("datang")) {
-                if (!entry.fixedMasuk) { entry.fixedMasuk = timeStr; }
-                else { if (timeToMinutes(timeStr) < timeToMinutes(entry.fixedMasuk)) entry.fixedMasuk = timeStr; }
+            let timeStr = item.jam || "-";
+            
+            // Prioritas membaca Izin, Sakit, Alpa, Cuti, Dinas (Memunculkan teks pada laporan)
+            if (ket.includes("sakit") || ket.includes("izin") || ket.includes("alpa") || ket.includes("cuti") || ket.includes("dinas")) {
+                let displayKet = ket.charAt(0).toUpperCase() + ket.slice(1);
+                entry.fixedMasuk = displayKet;
+                entry.fixedPulang = "-";
+            } else if (ket.includes("masuk") || ket.includes("terlambat") || ket.includes("datang")) {
+                if (!entry.fixedMasuk || isNaN(timeToMinutes(entry.fixedMasuk))) { 
+                    entry.fixedMasuk = timeStr; 
+                } else if (!isNaN(timeToMinutes(timeStr))) { 
+                    if (timeToMinutes(timeStr) < timeToMinutes(entry.fixedMasuk)) entry.fixedMasuk = timeStr; 
+                }
             } else if (ket.includes("pulang") || ket.includes("keluar") || ket.includes("selesai")) {
-                if (!entry.fixedPulang) { entry.fixedPulang = timeStr; }
-                else { if (timeToMinutes(timeStr) > timeToMinutes(entry.fixedPulang)) entry.fixedPulang = timeStr; }
+                if (!entry.fixedPulang || isNaN(timeToMinutes(entry.fixedPulang))) { 
+                    entry.fixedPulang = timeStr; 
+                } else if (!isNaN(timeToMinutes(timeStr))) { 
+                    if (timeToMinutes(timeStr) > timeToMinutes(entry.fixedPulang)) entry.fixedPulang = timeStr; 
+                }
+            } else {
+                if (!entry.fixedMasuk) entry.fixedMasuk = timeStr;
+                else if (!entry.fixedPulang) entry.fixedPulang = timeStr;
             }
         }
     });
     return matrix;
+}
+
+function renderEditTable() {
+    const tbody = document.getElementById('tbody-edit-raw');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (teacherGlobalData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" align="center">Data kosong.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    teacherGlobalData.forEach((row, idx) => {
+        html += createEditRowHTML(row.tgl, row.jam, row.nama, row.keterangan, idx);
+    });
+    tbody.innerHTML = html;
+}
+
+function createEditRowHTML(tgl, jam, nama, ket, id) {
+    let teacherOptions = `<option value="">- Pilih Guru -</option>`;
+    TEACHER_LIST.forEach(t => {
+        teacherOptions += `<option value="${t}" ${t === nama ? 'selected' : ''}>${t}</option>`;
+    });
+
+    return `
+    <tr data-id="${id}">
+        <td><input type="text" class="form-control tgl-edit" value="${tgl || ''}" placeholder="DD/MM/YYYY" style="min-width: 110px;"></td>
+        <td><input type="text" class="form-control jam-edit" value="${jam || ''}" placeholder="HH:MM" style="min-width: 80px;"></td>
+        <td><select class="form-control nama-edit" style="min-width: 150px;">${teacherOptions}</select></td>
+        <td><input type="text" class="form-control ket-edit" value="${ket || ''}" placeholder="Keterangan" style="min-width: 120px;"></td>
+        <td align="center"><button class="btn btn-primary" onclick="this.closest('tr').remove()" style="background-color: #ef476f; border-radius: 6px; padding: 6px 10px;"><i class="fas fa-trash"></i></button></td>
+    </tr>
+    `;
+}
+
+function addEditRow() {
+    const tbody = document.getElementById('tbody-edit-raw');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = ''; 
+    
+    const newRow = createEditRowHTML('', '', '', '', 'new');
+    tbody.insertAdjacentHTML('afterbegin', newRow);
+}
+
+function saveEditData() {
+    const rows = document.querySelectorAll('#tbody-edit-raw tr');
+    let newData = [];
+    
+    rows.forEach(tr => {
+        if (tr.querySelector('.tgl-edit')) {
+            const tgl = tr.querySelector('.tgl-edit').value.trim();
+            const jam = tr.querySelector('.jam-edit').value.trim();
+            const nama = tr.querySelector('.nama-edit').value;
+            const ket = tr.querySelector('.ket-edit').value.trim();
+            
+            if (tgl && nama) { 
+                newData.push({
+                    tgl: tgl,
+                    jam: jam,
+                    nama: nama,
+                    keterangan: ket
+                });
+            }
+        }
+    });
+    
+    teacherGlobalData = newData; // Simpan pembaruan ke dalam Memori Global Array
+    showAlert("Data mentah berhasil diperbarui di memori. Laporan PDF akan menggunakan data ini.", "Tersimpan");
 }
 
 function finalizeTeacherPDF(doc, filename, mode) {
