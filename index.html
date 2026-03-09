@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIAKAD &amp; Presensi Terpadu</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Script tags diubah menggunakan penutup penuh untuk HTML5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #4cc9f0;
+            --primary-dark: #4361ee;
+            --bg-body: #f0f4f8;
+            --bg-sidebar: #ffffff;
+            --text-main: #2b2d42;
+            --text-muted: #8d99ae;
+            --border: #edf2f4;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+            --glass: rgba(255, 255, 255, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+            text-decoration: none;
+            list-style: none;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        button,
+        input,
+        select {
+            font-family: inherit;
+        }
+
+        /* CUSTOM ALERT STYLES */
+        #custom-alert-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 20000;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #custom-alert-overlay.show {
+            opacity: 1;
+        }
+
+        .custom-alert-box {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #custom-alert-overlay.show .custom-alert-box {
+            transform: scale(1);
+        }
+
+        .alert-icon-circle {
+            width: 60px;
+            height: 60px;
+            background: #e0f2fe;
+            color: var(--primary-dark);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .alert-message {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-alert {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--primary-dark);
+            color: white;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-alert:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        /* LOGIN PAGE */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .bg-shape {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            top: -50px;
+            left: -50px;
+        }
+
+        .shape-2 {
+            width: 200px;
+            height: 200px;
+            bottom: 50px;
+            right: -30px;
+            animation-delay: 2s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .login-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .login-icon {
+            width: 70px;
+            height: 70px;
+            background: var(--primary-dark);
+            color: white;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+            transform: rotate(-10deg);
+        }
+
+        .role-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 5px;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .role-tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.3s;
+        }
+
+        .role-tab.active {
+            background: white;
+            color: var(--primary-dark);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+
+        .form-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            font-weight: 600;
+            transition: 0.3s;
+            color: var(--text-main);
+        }
+
+        .form-input:focus {
+            background: white;
+            border-color: #4cc9f0;
+            box-shadow: 0 0 0 4px rgba(76, 201, 240, 0.2);
+        }
+
+        .btn-grad {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(to right, var(--primary-dark), #3a0ca3);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(58, 12, 163, 0.3);
+            transition: 0.3s;
+        }
+
+        .btn-grad:hover {
+            transform: translateY(-3px);
+        }
+
+        /* DASHBOARD LAYOUT */
+        #app-wrapper {
+            display: none;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: 0.4s;
+        }
+
+        .sidebar-header {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header i {
+            margin-right: 10px;
+            color: #f72585;
+        }
+
+        .nav-menu {
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-weight: 700;
+            display: block;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            color: var(--text-muted);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .nav-item:hover {
+            background: #f0f7ff;
+            color: var(--primary-dark);
+        }
+
+        .nav-item.active {
+            background: var(--primary-dark);
+            color: white;
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.25);
+        }
+
+        .nav-item i {
+            width: 24px;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .user-profile {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #ffd166;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            color: white;
+        }
+
+        .user-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .user-info p {
+            font-size: 0.75rem;
+            margin: 0;
+            color: var(--text-muted);
+        }
+
+        .btn-logout {
+            margin-left: auto;
+            background: #ffe5ec;
+            color: #ef476f;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            width: calc(100% - 280px);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: 0.4s;
+        }
+
+        .topbar {
+            height: 80px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .academic-pill {
+            background: white;
+            border: 1px solid #4cc9f0;
+            color: var(--primary-dark);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-count {
+            background: #e0f2fe;
+            color: #0284c7;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            border: 1px solid #bae6fd;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th {
+            text-align: left;
+            padding: 18px 15px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 700;
+            background: #f8f9fa;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-dark);
+            color: white;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: inherit;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            border-radius: 20px;
+            animation: slideUp 0.3s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .mobile-toggle {
+            display: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* --- STYLE KHUSUS: LAPORAN GURU --- */
+        .teacher-tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: bold;
+            color: #666;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-dark);
+            border-bottom: 3px solid var(--primary-dark);
+        }
+
+        .teacher-tab-content {
+            display: none;
+        }
+
+        .teacher-tab-content.active {
+            display: block;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+
+        .teacher-loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="custom-alert-overlay">
+        <div class="custom-alert-box">
+            <div class="alert-icon-circle">
+                <i class="fas fa-info" id="alert-icon"></i>
+            </div>
+            <h3 class="alert-title" id="alert-title">Informasi</h3>
+            <p class="alert-message" id="alert-msg">Pesan notifikasi.</p>
+            <button class="btn-alert" onclick="closeAlert()">OK, SAYA MENGERTI</button>
+        </div>
+    </div>
+
+    <div id="login-overlay">
+        <div class="bg-shape shape-1"></div>
+        <div class="bg-shape shape-2"></div>
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon"><i class="fas fa-user-shield"></i></div>
+                <h2 style="font-weight:700">LOGIN ADMIN</h2>
+                <p style="color:#8d99ae">SIAKAD & Presensi Terpadu</p>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group"><i class="fas fa-user form-icon"></i><input class="form-input" id="u_name" placeholder="Username" required></div>
+                <div class="form-group"><i class="fas fa-lock form-icon"></i><input class="form-input" id="u_pass" placeholder="Password" required type="password"></div>
+                <button class="btn-grad" id="btn-login" type="submit">MASUK SEKARANG</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-wrapper">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header"><i class="fas fa-school"></i> Presensi</div>
+            <nav class="nav-menu">
+                <div id="menu-admin">
+                    <span class="nav-label">Administrasi</span>
+                    <div class="nav-item active" onclick="navTo('cetak-guru', this)"><i class="fas fa-file-invoice"></i> Laporan Absensi Guru</div>
+                    <div class="nav-item" onclick="navTo('admin-config', this)"><i class="fas fa-sliders-h"></i> Konfigurasi</div>
+                </div>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar" id="user-initial">U</div>
+                <div class="user-info">
+                    <h4 id="lbl-user">User</h4>
+                    <p id="lbl-role">Role</p>
+                </div>
+                <button class="btn-logout" onclick="doLogout()"><i class="fas fa-power-off"></i></button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div style="display:flex;align-items:center;gap:15px">
+                    <div class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('show')"><i class="fas fa-bars"></i></div>
+                    <div class="page-title">
+                        <h2 id="page-heading">Dashboard</h2>
+                    </div>
+                </div>
+                <div class="academic-pill"><i class="far fa-calendar-alt"></i> <span id="lbl-ta">-</span> &#8226; <span id="lbl-smt">-</span></div>
+            </header>
+
+            <div class="container">
+
+                <div class="page-section hidden" id="page-cetak-guru">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-file-invoice" style="color:#6f42c1"></i> Laporan Kehadiran Guru</h3>
+                        </div>
+
+                        <div class="teacher-tabs">
+                            <button class="tab-btn active" onclick="switchTeacherTab('individual')">Laporan Per Guru</button>
+                            <button class="tab-btn" onclick="switchTeacherTab('master')">Rekap Master (Semua)</button>
+                        </div>
+
+                        <div class="control-panel">
+                            <div class="form-group">
+                                <label>Pilih Bulan:</label>
+                                <select class="form-control" id="t_month">
+                                    <option selected value="0">Januari</option>
+                                    <option value="1">Februari</option>
+                                    <option value="2">Maret</option>
+                                    <option value="3">April</option>
+                                    <option value="4">Mei</option>
+                                    <option value="5">Juni</option>
+                                    <option value="6">Juli</option>
+                                    <option value="7">Agustus</option>
+                                    <option value="8">September</option>
+                                    <option value="9">Oktober</option>
+                                    <option value="10">November</option>
+                                    <option value="11">Desember</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Pilih Tahun:</label>
+                                <select class="form-control" id="t_year">
+                                    <option value="2025">2025</option>
+                                    <option selected value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="display:flex; align-items:flex-end;">
+                                <button class="btn btn-primary" id="t_btnFetch" onclick="fetchTeacherData()"><i class="fas fa-sync"></i> Ambil Data Server Guru</button>
+                            </div>
+                        </div>
+
+                        <div class="teacher-loading" id="t_loading"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</div>
+
+                        <div class="teacher-tab-content active" id="tab-teacher-individual">
+                            <div class="control-panel" style="background: #eef7ff; border-color: #b8daff;">
+                                <div class="form-group">
+                                    <label>Filter Nama Guru:</label>
+                                    <select class="form-control" id="t_guruSelector">
+                                        <option value="">-- Pilih Guru --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="display:flex; align-items:flex-end; gap:5px; flex-wrap:wrap;">
+                                    <button class="btn btn-primary" onclick="generateIndividualPDF('preview')"><i class="fas fa-eye"></i> Preview</button>
+                                    <button class="btn btn-success" onclick="generateIndividualPDF('download')"><i class="fas fa-download"></i> Download</button>
+                                </div>
+                            </div>
+                            <div class="control-panel" style="margin-top:10px; border-top:1px dashed #ccc; display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                                <button class="btn btn-primary" onclick="generateAnnualIndividualPDF('preview')"><i class="fas fa-eye"></i> Preview Tahunan</button>
+                                <button class="btn btn-success" onclick="generateAnnualIndividualPDF('download')" style="background-color: #6f42c1;"><i class="fas fa-book-reader"></i> Download Tahunan (Jan-Des)</button>
+                            </div>
+                        </div>
+
+                        <div class="teacher-tab-content" id="tab-teacher-master">
+                            <div class="control-panel" style="background: #fff3cd; border-color: #ffeeba;">
+                                <p style="margin:0 0 10px 0; width:100%; font-size:0.9em;"><strong>Opsi 1 - Per Minggu:</strong> Mencetak matriks 1 minggu (Senin-Sabtu).</p>
+                                <div class="form-group">
+                                    <label>Minggu ke-:</label>
+                                    <select class="form-control" id="t_week">
+                                        <option value="1">Minggu 1</option>
+                                        <option value="2">Minggu 2</option>
+                                        <option value="3">Minggu 3</option>
+                                        <option value="4">Minggu 4</option>
+                                        <option value="5">Minggu 5</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="display:flex; align-items:flex-end; gap:5px;">
+                                    <button class="btn btn-primary" onclick="generateMasterPDF('preview')"><i class="fas fa-eye"></i> Preview</button>
+                                    <button class="btn btn-warning" onclick="generateMasterPDF('download')"><i class="fas fa-download"></i> Download</button>
+                                </div>
+                            </div>
+
+                            <div class="control-panel" style="background: #d4edda; border-color: #c3e6cb;">
+                                <p style="margin:0 0 10px 0; width:100%; font-size:0.9em;"><strong>Opsi 2 - Full Bulan:</strong> Laporan otomatis dibagi halaman.</p>
+                                <div style="display:flex; gap:5px; justify-content:center;">
+                                    <button class="btn btn-primary" onclick="generateMonthlyFullPDF('preview')"><i class="fas fa-eye"></i> Preview</button>
+                                    <button class="btn btn-success" onclick="generateMonthlyFullPDF('download')"><i class="fas fa-calendar-alt"></i> Download Full Bulan</button>
+                                </div>
+                            </div>
+
+                            <div class="control-panel" style="margin-top:10px; border-top:1px dashed #ccc; display:flex; gap:5px; justify-content:center;">
+                                <button class="btn btn-primary" onclick="generateAnnualMasterPDF('preview')"><i class="fas fa-eye"></i> Preview Tahunan</button>
+                                <button class="btn btn-success" onclick="generateAnnualMasterPDF('download')" style="background-color: #6f42c1;"><i class="fas fa-book"></i> Download Tahunan (Jan-Des)</button>
+                            </div>
+                        </div>
+
+                        <div id="teacher-pdf-preview" style="height:500px; background:#e9ecef; margin-top:20px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#8d99ae; border:1px solid #ddd;">
+                            Preview PDF akan muncul di sini...
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="page-section hidden" id="page-admin-config">
+                    <div class="card" style="max-width:500px">
+                        <div class="card-header">
+                            <h3><i class="fas fa-cog"></i> Pengaturan</h3>
+                        </div>
+                        <div style="margin-bottom:1rem"><label style="font-weight:700; font-size:0.8rem">TAHUN PELAJARAN</label><input class="form-control" id="cfg-ta" placeholder="2025/2026"></div>
+                        <div style="margin-bottom:1.5rem"><label style="font-weight:700; font-size:0.8rem">SEMESTER</label><select class="form-control" id="cfg-smt">
+                                <option value="Ganjil">Ganjil</option>
+                                <option value="Genap">Genap</option>
+                            </select></div>
+                        <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">SIMPAN PERUBAHAN</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbx20gIWQIbNBa2f6o1dr3elRkf1Us8G0Ypb1K8x53fTIwndiSsa6mGuZSWtpfSy8EAk/exec";
+        const TEACHER_API_URL = 'https://script.google.com/macros/s/AKfycbz6yVDqJbjY_mud1Yg7j5bwL7vQIU-8zHso2o6ycNoyEsD_5STlvxgkJHC-Bl3oJY3oUw/exec';
+
+        const TEACHER_LIST = [
+            "Soferet Sefatja Domakubun.S.Pd", "Marthina Kormasela.S.PdK", "Oktovina Ratsina.S.Pd",
+            "Oktovina L Watmanlussy.S.Pd", "Melianus Ratuanik.S.Pd", "Miryam Yuliana Lololuan.S.PdK",
+            "Adelheid Renjaan.S.Pd", "Costantina Ratila.S.Pd", "Enike Benselina Ibur.S.Sos","Wanti Slarmanat.S.Pd",
+            "Korlina Wulandari Domakubun.S.Pd", "Sulce Wessy.S.Pd",
+            "Edward Domakubun", "Yoseph Yohanes Saiselar"
+        ];
+        const KEPSEK_INFO = { nama: "SOFERET S DOMAKUBUN,S.Pd", nip: "19680606 199111 1 001" };
+        let teacherGlobalData = [];
+        let currentUser = null;
+        const { jsPDF } = window.jspdf;
+
+        // --- CUSTOM ALERT FUNCTION ---
+        function showAlert(msg, title = "Informasi") {
+            const overlay = document.getElementById('custom-alert-overlay');
+            const boxMsg = document.getElementById('alert-msg');
+            const boxTitle = document.getElementById('alert-title');
+
+            boxMsg.innerText = msg;
+            boxTitle.innerText = title;
+            overlay.style.display = 'flex';
+
+            void overlay.offsetWidth;
+            overlay.classList.add('show');
+        }
+
+        function closeAlert() {
+            const overlay = document.getElementById('custom-alert-overlay');
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            checkAuth();
+            initTeacherFeature();
+        });
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login'); 
+            const oldText = btn.innerHTML;
+            btn.disabled = true; 
+            btn.innerHTML = "<i class='fas fa-circle-notch fa-spin'></i> MEMPROSES...";
+            
+            fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    action: 'login', 
+                    role: 'admin', 
+                    username: document.getElementById('u_name').value.trim(), 
+                    password: document.getElementById('u_pass').value.trim() 
+                }) 
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success') { 
+                    localStorage.setItem('siakad_sess', JSON.stringify(res)); 
+                    checkAuth(); 
+                } else { 
+                    showAlert(res.message, "Gagal Login"); 
+                }
+            })
+            .catch(err => showAlert("Terjadi kesalahan koneksi.", "Error"))
+            .finally(() => { 
+                btn.disabled = false; 
+                btn.innerHTML = oldText; 
+            });
+        }
+
+        function checkAuth() {
+            const sess = JSON.parse(localStorage.getItem('siakad_sess'));
+            if (sess && sess.role === 'admin') {
+                currentUser = sess;
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('app-wrapper').style.display = 'flex';
+                document.getElementById('lbl-user').innerText = sess.user.nama;
+                document.getElementById('user-initial').innerText = sess.user.nama.charAt(0);
+                document.getElementById('lbl-role').innerText = 'Administrator';
+                document.getElementById('lbl-ta').innerText = sess.config.tahun_ajar;
+                document.getElementById('lbl-smt').innerText = sess.config.semester;
+
+                navTo('cetak-guru', document.querySelector('#menu-admin .nav-item')); 
+                document.getElementById('cfg-ta').value = sess.config.tahun_ajar; 
+                document.getElementById('cfg-smt').value = sess.config.semester;
+            } else { 
+                document.getElementById('login-overlay').style.display = 'flex'; 
+                document.getElementById('app-wrapper').style.display = 'none'; 
+            }
+        }
+
+        function navTo(page, el) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-' + page).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            let title = "Dashboard";
+            if (page === 'cetak-guru') title = "Laporan Absensi Guru";
+            if (page === 'admin-config') title = "Pengaturan";
+
+            document.getElementById('page-heading').innerText = title;
+            if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('show');
+        }
+
+        function doLogout() { 
+            if (confirm("Keluar dari aplikasi?")) { 
+                localStorage.removeItem('siakad_sess'); 
+                location.reload(); 
+            } 
+        }
+
+        // --- PENGATURAN ADMIN ---
+        function saveConfig() {
+            const btn = event.target; btn.innerText = "Menyimpan...";
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_config', tahun_ajar: document.getElementById('cfg-ta').value, semester: document.getElementById('cfg-smt').value }) })
+                .then(r => r.json()).then(res => { showAlert(res.message, "Sukses"); if (res.status == 'success') location.reload(); }).finally(() => btn.innerText = "SIMPAN PERUBAHAN");
+        }
+
+        // =================================================================================
+        //  LOGIKA BARU: CETAK ABSENSI GURU (INTEGRATED)
+        // =================================================================================
+
+        function initTeacherFeature() {
+            const selector = document.getElementById('t_guruSelector');
+            if (selector && selector.options.length <= 1) {
+                TEACHER_LIST.forEach(name => {
+                    let opt = document.createElement('option');
+                    opt.value = name; opt.text = name; selector.appendChild(opt);
+                });
+            }
+        }
+
+        function switchTeacherTab(tabName) {
+            document.querySelectorAll('.teacher-tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.teacher-tabs .tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-teacher-' + tabName).classList.add('active');
+
+            const btns = document.querySelectorAll('.teacher-tabs .tab-btn');
+            if (tabName === 'individual') btns[0].classList.add('active'); else btns[1].classList.add('active');
+        }
+
+        async function fetchTeacherData() {
+            const btn = document.getElementById('t_btnFetch');
+            const loading = document.getElementById('t_loading');
+            btn.disabled = true; loading.style.display = 'block';
+
+            try {
+                const response = await fetch(TEACHER_API_URL);
+                const data = await response.json();
+                teacherGlobalData = data;
+                loading.style.display = 'none'; btn.disabled = false;
+
+                if (data.length > 0) showAlert(`Berhasil! ${data.length} data guru diambil.`, "Sukses");
+                else showAlert('Data 0. Cek Spreadsheet Guru.', "Info");
+
+            } catch (error) {
+                console.error(error);
+                loading.style.display = 'none'; btn.disabled = false;
+                showAlert('Gagal mengambil data guru.', "Error");
+            }
+        }
+
+        function dateToTextID(dateObj) {
+            let dd = String(dateObj.getDate()).padStart(2, '0');
+            let mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            let yyyy = dateObj.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            let parts = timeStr.split(':');
+            return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+        }
+
+        function processSmartMatrix(rawData, targetDatesObj) {
+            let matrix = {};
+            TEACHER_LIST.forEach(name => matrix[name] = {});
+            let targetStrings = targetDatesObj.map(d => dateToTextID(d));
+
+            rawData.forEach(item => {
+                if (!TEACHER_LIST.includes(item.nama)) return;
+                if (targetStrings.includes(item.tgl)) {
+                    let dateKey = item.tgl;
+                    if (!matrix[item.nama][dateKey]) matrix[item.nama][dateKey] = { fixedMasuk: null, fixedPulang: null };
+                    let entry = matrix[item.nama][dateKey];
+                    let ket = (item.keterangan || "").toLowerCase().trim();
+                    let timeStr = item.jam;
+                    if (ket.includes("masuk") || ket.includes("terlambat") || ket.includes("datang")) {
+                        if (!entry.fixedMasuk) { entry.fixedMasuk = timeStr; }
+                        else { if (timeToMinutes(timeStr) < timeToMinutes(entry.fixedMasuk)) entry.fixedMasuk = timeStr; }
+                    } else if (ket.includes("pulang") || ket.includes("keluar") || ket.includes("selesai")) {
+                        if (!entry.fixedPulang) { entry.fixedPulang = timeStr; }
+                        else { if (timeToMinutes(timeStr) > timeToMinutes(entry.fixedPulang)) entry.fixedPulang = timeStr; }
+                    }
+                }
+            });
+            return matrix;
+        }
+
+        function finalizeTeacherPDF(doc, filename, mode) {
+            if (mode === 'preview') {
+                const previewDiv = document.getElementById('teacher-pdf-preview');
+                previewDiv.innerHTML = `<iframe width='100%' height='100%' src='${doc.output('datauristring')}' style='border:none'></iframe>`;
+                previewDiv.scrollIntoView({ behavior: "smooth" });
+            } else {
+                doc.save(filename);
+            }
+        }
+
+        function generateIndividualPDF(mode) {
+            if (teacherGlobalData.length === 0) { showAlert("Ambil data dulu.", "Peringatan"); return; }
+            const selectedGuru = document.getElementById('t_guruSelector').value;
+            if (!selectedGuru) { showAlert("Pilih nama guru terlebih dahulu.", "Peringatan"); return; }
+            const selectedMonth = parseInt(document.getElementById('t_month').value);
+            const selectedYear = parseInt(document.getElementById('t_year').value);
+            const doc = new jsPDF({ orientation: "landscape", format: 'a4' });
+            renderIndividualMonthPage(doc, selectedGuru, selectedMonth, selectedYear, true);
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+            finalizeTeacherPDF(doc, `Individu_${selectedGuru.replace(/ /g, '_')}_${monthNames[selectedMonth]}.pdf`, mode);
+        }
+
+        function generateAnnualIndividualPDF(mode) {
+            if (teacherGlobalData.length === 0) { showAlert("Ambil data dulu.", "Peringatan"); return; }
+            const selectedGuru = document.getElementById('t_guruSelector').value;
+            if (!selectedGuru) { showAlert("Pilih nama guru terlebih dahulu.", "Peringatan"); return; }
+            const selectedYear = parseInt(document.getElementById('t_year').value);
+            const doc = new jsPDF({ orientation: "landscape", format: 'a4' });
+            let isFirstPage = true; let dataFound = false;
+            for (let m = 0; m < 12; m++) {
+                let weeksBatches = generateWeeksBatches(selectedYear, m);
+                let allTargetDates = weeksBatches.flat();
+                let targetStrings = allTargetDates.map(d => dateToTextID(d));
+                let hasData = teacherGlobalData.some(item => item.nama === selectedGuru && targetStrings.includes(item.tgl));
+                if (!hasData) continue;
+                dataFound = true;
+                renderIndividualMonthPage(doc, selectedGuru, m, selectedYear, isFirstPage);
+                isFirstPage = false;
+            }
+            if (!dataFound) {
+                showAlert(`Tidak ada data absensi untuk ${selectedGuru} di tahun ${selectedYear}`, "Info");
+            } else {
+                finalizeTeacherPDF(doc, `Individu_Tahunan_${selectedGuru.replace(/ /g, '_')}_${selectedYear}.pdf`, mode);
+            }
+        }
+
+        function renderIndividualMonthPage(doc, teacherName, monthIndex, year, isFirstPage) {
+            if (!isFirstPage) doc.addPage();
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const monthName = monthNames[monthIndex];
+            let weeksBatches = generateWeeksBatches(year, monthIndex);
+            let allTargetDates = weeksBatches.flat();
+            let matrixData = processSmartMatrix(teacherGlobalData, allTargetDates);
+
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+            doc.text("DAFTAR KEHADIRAN GURU DAN STAFF SD INPRES LELINGLUAN", 148.5, 12, null, null, "center");
+            doc.text(`TAHUN AJARAN ${year}/${year + 1}`, 148.5, 17, null, null, "center");
+            doc.setFontSize(8); doc.text(`Bulan: ${monthName}`, 14, 25); doc.text(`Tahun: ${year}`, 14, 29);
+
+            let headRow1 = [{ content: 'No', rowSpan: 2, styles: { valign: 'middle', halign: 'center' } }, { content: 'Nama', rowSpan: 2, styles: { valign: 'middle', halign: 'center' } }, { content: 'Hari Efektif', colSpan: 12, styles: { halign: 'center', fontStyle: 'bold' } }];
+            const dayNamesIndo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            let headRow2 = []; dayNamesIndo.forEach(day => { headRow2.push({ content: day, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } }); });
+
+            let tableBody = [];
+            let totalWeeks = weeksBatches.length;
+            let rowsPerWeek = 4; let totalRowSpan = totalWeeks * rowsPerWeek;
+
+            weeksBatches.forEach((batch, wIndex) => {
+                let rowLabel = [];
+                if (wIndex === 0) {
+                    rowLabel.push({ content: '1', rowSpan: totalRowSpan, styles: { valign: 'middle', halign: 'center' } });
+                    rowLabel.push({ content: teacherName, rowSpan: totalRowSpan, styles: { valign: 'middle', halign: 'center' } });
+                }
+                rowLabel.push({ content: `Minggu ${wIndex + 1}`, colSpan: 12, styles: { fontStyle: 'bold', fillColor: [240, 240, 240], halign: 'left' } });
+                tableBody.push(rowLabel);
+
+                let weekDatesMap = new Array(6).fill(null);
+                batch.forEach(d => { let dayIdx = d.getDay(); if (dayIdx >= 1 && dayIdx <= 6) weekDatesMap[dayIdx - 1] = d; });
+
+                let rowDates = []; weekDatesMap.forEach(d => { let txt = d ? dateToTextID(d) : ""; rowDates.push({ content: txt, colSpan: 2, styles: { halign: 'center', fontStyle: 'italic', fontSize: 7 } }); });
+                tableBody.push(rowDates);
+
+                let rowHeaders = []; for (let i = 0; i < 6; i++) { rowHeaders.push({ content: 'Masuk', styles: { halign: 'center', fontSize: 6 } }); rowHeaders.push({ content: 'Pulang', styles: { halign: 'center', fontSize: 6 } }); }
+                tableBody.push(rowHeaders);
+
+                let rowData = []; weekDatesMap.forEach(d => { let masuk = ""; let pulang = ""; if (d) { let dateKey = dateToTextID(d); let data = matrixData[teacherName] && matrixData[teacherName][dateKey]; masuk = (data && data.fixedMasuk) ? data.fixedMasuk : ""; pulang = (data && data.fixedPulang) ? data.fixedPulang : ""; } rowData.push({ content: masuk, styles: { halign: 'center' } }); rowData.push({ content: pulang, styles: { halign: 'center' } }); });
+                tableBody.push(rowData);
+            });
+
+            doc.autoTable({ startY: 32, head: [headRow1, headRow2], body: tableBody, theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 1, lineColor: [0, 0, 0], lineWidth: 0.1, textColor: [0, 0, 0] }, headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1, lineColor: [0, 0, 0] }, bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] }, columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45 } }, margin: { left: 10, right: 10 } });
+            addSignature(doc, monthIndex, year);
+        }
+
+        function generateMasterPDF(mode) {
+            if (teacherGlobalData.length === 0) { showAlert("Ambil data dulu.", "Peringatan"); return; }
+            const selectedMonth = parseInt(document.getElementById('t_month').value);
+            const selectedYear = parseInt(document.getElementById('t_year').value);
+            const selectedWeek = parseInt(document.getElementById('t_week').value);
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            let datesInWeek = []; let firstDate = new Date(selectedYear, selectedMonth, 1); let dayOfFirst = firstDate.getDay(); let distToMon = (dayOfFirst + 6) % 7; let startMon = new Date(firstDate); startMon.setDate(firstDate.getDate() - distToMon); let targetMon = new Date(startMon); targetMon.setDate(startMon.getDate() + ((selectedWeek - 1) * 7));
+            for (let i = 0; i < 6; i++) { let d = new Date(targetMon); d.setDate(targetMon.getDate() + i); datesInWeek.push(d); }
+            let matrixData = processSmartMatrix(teacherGlobalData, datesInWeek);
+            const doc = new jsPDF({ orientation: "landscape", format: 'a4' });
+            createStrictMatrixPage(doc, datesInWeek, matrixData, selectedMonth, selectedYear, true);
+
+            finalizeTeacherPDF(doc, `Rekap_Minggu_${selectedWeek}_${monthNames[selectedMonth]}.pdf`, mode);
+        }
+
+        function generateMonthlyFullPDF(mode) {
+            if (teacherGlobalData.length === 0) { showAlert("Ambil data dulu.", "Peringatan"); return; }
+            const selectedMonth = parseInt(document.getElementById('t_month').value);
+            const selectedYear = parseInt(document.getElementById('t_year').value);
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            let weeksBatches = generateWeeksBatches(selectedYear, selectedMonth);
+            let allTargetDates = weeksBatches.flat();
+            let matrixData = processSmartMatrix(teacherGlobalData, allTargetDates);
+            const doc = new jsPDF({ orientation: "landscape", format: 'a4' });
+            weeksBatches.forEach((batch, index) => { let isFirst = (index === 0); createStrictMatrixPage(doc, batch, matrixData, selectedMonth, selectedYear, isFirst); });
+
+            finalizeTeacherPDF(doc, `Absensi_Full_${monthNames[selectedMonth]}.pdf`, mode);
+        }
+
+        function generateAnnualMasterPDF(mode) {
+            if (teacherGlobalData.length === 0) { showAlert("Ambil data dulu.", "Peringatan"); return; }
+            const selectedYear = parseInt(document.getElementById('t_year').value);
+            const doc = new jsPDF({ orientation: "landscape", format: 'a4' });
+            let isGlobalFirstPage = true; let dataFound = false;
+            for (let m = 0; m < 12; m++) {
+                let weeksBatches = generateWeeksBatches(selectedYear, m);
+                let allTargetDates = weeksBatches.flat();
+                let targetStrings = allTargetDates.map(d => dateToTextID(d));
+                let hasDataInMonth = teacherGlobalData.some(item => targetStrings.includes(item.tgl) && TEACHER_LIST.includes(item.nama));
+                if (!hasDataInMonth) continue;
+                dataFound = true;
+                let matrixData = processSmartMatrix(teacherGlobalData, allTargetDates);
+                weeksBatches.forEach((batch) => { createStrictMatrixPage(doc, batch, matrixData, m, selectedYear, isGlobalFirstPage); isGlobalFirstPage = false; });
+            }
+            if (!dataFound) {
+                showAlert("Tidak ada data absensi ditemukan untuk tahun " + selectedYear, "Info");
+            } else {
+                finalizeTeacherPDF(doc, `Absensi_Tahunan_Master_${selectedYear}.pdf`, mode);
+            }
+        }
+
+        function createStrictMatrixPage(doc, datesSubset, matrixData, monthIndex, year, isFirstPage, customTeacherList = null) {
+            if (!isFirstPage) doc.addPage();
+            const listToRender = customTeacherList || TEACHER_LIST;
+            const dayNamesIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const monthName = monthNames[monthIndex];
+            doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+            doc.text("DAFTAR KEHADIRAN GURU DAN STAFF SD INPRES LELINGLUAN", 148.5, 12, null, null, "center");
+            doc.text(`TAHUN AJARAN ${year}/${year + 1}`, 148.5, 17, null, null, "center");
+            doc.setFontSize(8); doc.text(`Bulan: ${monthName}`, 14, 25); doc.text(`Tahun: ${year}`, 14, 29);
+            let row1 = [{ content: 'No', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } }, { content: 'Nama', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } }, { content: 'Hari Efektif', colSpan: datesSubset.length * 2, styles: { halign: 'center', fontStyle: 'bold' } }];
+            let row2 = [], row3 = [], row4 = [];
+            datesSubset.forEach(d => { let hari = dayNamesIndo[d.getDay()]; let tglString = dateToTextID(d); row2.push({ content: hari, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } }); row3.push({ content: tglString, colSpan: 2, styles: { halign: 'center', fontStyle: 'italic' } }); row4.push({ content: 'Masuk', styles: { halign: 'center' } }); row4.push({ content: 'Pulang', styles: { halign: 'center' } }); });
+            let tableBody = [];
+            listToRender.forEach((name, idx) => {
+                let noUrut = idx + 1; let row = [noUrut, name];
+                datesSubset.forEach(d => { let dateKey = dateToTextID(d); let data = matrixData[name] && matrixData[name][dateKey]; row.push((data && data.fixedMasuk) ? data.fixedMasuk : ""); row.push((data && data.fixedPulang) ? data.fixedPulang : ""); });
+                tableBody.push(row);
+            });
+            doc.autoTable({ startY: 32, head: [row1, row2, row3, row4], body: tableBody, theme: 'grid', styles: { font: 'helvetica', fontSize: 7, cellPadding: 1, lineColor: [0, 0, 0], lineWidth: 0.1, textColor: [0, 0, 0] }, headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1, lineColor: [0, 0, 0] }, bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] }, columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45 } }, margin: { left: 10, right: 10 } });
+            addSignature(doc, monthIndex, year);
+        }
+
+        function addSignature(doc, monthIndex, year) {
+            let finalY = doc.lastAutoTable.finalY + 10;
+            if (finalY > 170) { doc.addPage(); finalY = 20; }
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            let lastDate = new Date(year, monthIndex + 1, 0);
+            let tglTerakhir = lastDate.getDate();
+            let titimangsa = `Lelingluan, ${tglTerakhir} ${monthNames[monthIndex]} ${year}`;
+            let signX = 200;
+            doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.text(titimangsa, signX, finalY); doc.text("Kepala Sekolah", signX, finalY + 5);
+            let nameY = finalY + 30; doc.setFont("helvetica", "bold"); doc.text(KEPSEK_INFO.nama, signX, nameY);
+            let textWidth = doc.getTextWidth(KEPSEK_INFO.nama); doc.setLineWidth(0.2); doc.line(signX, nameY + 1, signX + textWidth, nameY + 1);
+            doc.setFont("helvetica", "normal"); doc.text(`NIP. ${KEPSEK_INFO.nip}`, signX, nameY + 5);
+        }
+
+        function generateWeeksBatches(year, month) {
+            let weeksBatches = []; let currentBatch = []; let iterDate = new Date(year, month, 1);
+            while (iterDate.getMonth() === month) {
+                let day = iterDate.getDay(); if (day !== 0) { currentBatch.push(new Date(iterDate)); }
+                let isSaturday = (day === 6); let nextDay = new Date(iterDate); nextDay.setDate(iterDate.getDate() + 1); let isLastDayOfMonth = (nextDay.getMonth() !== month);
+                if ((isSaturday || isLastDayOfMonth) && currentBatch.length > 0) { weeksBatches.push(currentBatch); currentBatch = []; }
+                iterDate.setDate(iterDate.getDate() + 1);
+            }
+            return weeksBatches;
+        }
+    </script>
+</body>
+</html>
